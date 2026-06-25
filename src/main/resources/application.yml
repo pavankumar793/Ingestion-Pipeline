@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: ingestion-pipeline
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 250MB
+
+ingestion:
+  output-root: docs-unstaged
+  max-files-per-request: 10
+  max-file-size-bytes: 26214400
+  chunk:
+    max-words: 1000
+    overlap-words: 120
+    min-extracted-characters: 80
+  github:
+    enabled: false
+    repository: pavankumar793/slack-rag-assistant
+    base-branch: main
+    target-folder: docs
+    branch-prefix: ingestion
+    token: ${GITHUB_TOKEN:}
+    api-url: https://api.github.com

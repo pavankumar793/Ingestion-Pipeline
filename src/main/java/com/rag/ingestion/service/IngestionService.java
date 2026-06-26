@@ -7,6 +7,7 @@ import com.rag.ingestion.service.model.ExtractedDocument;
 import com.rag.ingestion.service.model.FileResult;
 import com.rag.ingestion.service.model.GitHubPublishResult;
 import com.rag.ingestion.service.model.StoredSource;
+import com.rag.ingestion.service.model.UrlDocument;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -25,6 +26,7 @@ public class IngestionService {
 
     private final IngestionProperties properties;
     private final TextExtractionService extractionService;
+    private final UrlContentService urlContentService;
     private final ChunkingService chunkingService;
     private final OutputWriter outputWriter;
     private final ManifestWriter manifestWriter;
@@ -35,6 +37,7 @@ public class IngestionService {
     public IngestionService(
             IngestionProperties properties,
             TextExtractionService extractionService,
+            UrlContentService urlContentService,
             ChunkingService chunkingService,
             OutputWriter outputWriter,
             ManifestWriter manifestWriter,
@@ -44,6 +47,7 @@ public class IngestionService {
     ) {
         this.properties = properties;
         this.extractionService = extractionService;
+        this.urlContentService = urlContentService;
         this.chunkingService = chunkingService;
         this.outputWriter = outputWriter;
         this.manifestWriter = manifestWriter;
@@ -63,6 +67,24 @@ public class IngestionService {
         }
 
         BatchResult result = new BatchResult(batchId, batchStatus(results), properties.outputRoot().resolve(batchId).toString(), results, GitHubPublishResult.disabled());
+        return finishBatch(result);
+    }
+
+    public BatchResult ingestUrls(List<String> urls) throws IOException {
+        validateUrls(urls);
+
+        String batchId = "batch-" + LocalDateTime.now(clock).format(BATCH_FORMAT);
+        List<FileResult> results = new ArrayList<>();
+
+        for (String url : urls) {
+            results.add(processUrl(batchId, url));
+        }
+
+        BatchResult result = new BatchResult(batchId, batchStatus(results), properties.outputRoot().resolve(batchId).toString(), results, GitHubPublishResult.disabled());
+        return finishBatch(result);
+    }
+
+    private BatchResult finishBatch(BatchResult result) throws IOException {
         manifestWriter.write(result);
         GitHubPublishResult gitHub = gitHubPublishingService.publish(result);
         BatchResult resultWithPublish = new BatchResult(result.batchId(), result.status(), result.outputPath(), result.files(), gitHub);
@@ -97,6 +119,29 @@ public class IngestionService {
         }
     }
 
+    private FileResult processUrl(String batchId, String url) {
+        try {
+            UrlDocument document = urlContentService.fetch(url);
+            if (sourceStateRepository.hasSameHash(document.sourceName(), document.contentHash())) {
+                return new FileResult(url, document.sourceName(), "skipped", "Content hash unchanged.", document.contentHash(), 0, List.of());
+            }
+            boolean existingSource = sourceStateRepository.exists(document.sourceName());
+
+            if (document.text().length() < properties.chunk().minExtractedCharacters()) {
+                return new FileResult(url, document.sourceName(), "failed", "No reliable readable text extracted from URL.", document.contentHash(), 0, List.of());
+            }
+
+            List<DocumentChunk> chunks = chunkingService.chunk(document.sourceName(), document.text());
+            StoredSource stored = outputWriter.write(batchId, document.sourceName(), url, document.contentHash(), chunks);
+            sourceStateRepository.save(document.sourceName(), document.contentHash());
+            String status = existingSource ? "updated" : "created";
+            return new FileResult(url, document.sourceName(), status, null, document.contentHash(), chunks.size(), stored.chunkFiles());
+        } catch (Exception exception) {
+            String sourceName = Slugifier.slugify(url == null || url.isBlank() ? "web-page" : url);
+            return new FileResult(url, sourceName, "failed", exception.getMessage(), null, 0, List.of());
+        }
+    }
+
     private void validateRequest(List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
             throw new IngestionValidationException("Upload at least one file.");
@@ -120,6 +165,24 @@ public class IngestionService {
             String sourceName = Slugifier.slugify(stripExtension(name));
             if (!sourceNames.add(sourceName)) {
                 throw new IngestionValidationException("Multiple files resolve to source name `" + sourceName + "`. Rename one file and retry.");
+            }
+        }
+    }
+
+    private void validateUrls(List<String> urls) {
+        if (urls == null || urls.isEmpty()) {
+            throw new IngestionValidationException("Provide at least one URL.");
+        }
+        if (urls.size() > properties.maxFilesPerRequest()) {
+            throw new IngestionValidationException("Provide at most " + properties.maxFilesPerRequest() + " URLs.");
+        }
+        Set<String> uniqueUrls = new HashSet<>();
+        for (String url : urls) {
+            if (url == null || url.isBlank()) {
+                throw new IngestionValidationException("URL cannot be blank.");
+            }
+            if (!uniqueUrls.add(url.trim())) {
+                throw new IngestionValidationException("Duplicate URL: " + url);
             }
         }
     }

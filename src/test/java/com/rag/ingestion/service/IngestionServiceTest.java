@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rag.ingestion.config.IngestionProperties;
 import com.rag.ingestion.service.model.BatchResult;
+import com.rag.ingestion.service.model.UrlDocument;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -68,12 +69,34 @@ class IngestionServiceTest {
         });
     }
 
+    @Test
+    void writesChunksAndManifestsForUrlInput() throws Exception {
+        IngestionService service = service(new StubUrlContentService());
+
+        BatchResult result = service.ingestUrls(List.of("https://example.com/wiki/support"));
+
+        assertThat(result.status()).isEqualTo("success");
+        assertThat(result.files()).singleElement().satisfies(fileResult -> {
+            assertThat(fileResult.fileName()).isEqualTo("https://example.com/wiki/support");
+            assertThat(fileResult.sourceName()).isEqualTo("support-wiki");
+            assertThat(fileResult.status()).isEqualTo("created");
+        });
+        Path chunkPath = outputRoot.resolve(result.batchId()).resolve("support-wiki").resolve("chunk-001.md");
+        assertThat(Files.readString(chunkPath)).contains("# Support Wiki");
+        assertThat(Files.readString(chunkPath)).contains("Support page content for ingestion.");
+    }
+
     private IngestionService service() {
+        return service(new UrlContentService());
+    }
+
+    private IngestionService service(UrlContentService urlContentService) {
         ObjectMapper objectMapper = new ObjectMapper();
         IngestionProperties properties = properties(1000, 120, 20);
         return new IngestionService(
                 properties,
                 new TextExtractionService(),
+                urlContentService,
                 new ChunkingService(properties),
                 new OutputWriter(properties),
                 new ManifestWriter(properties, objectMapper),
@@ -91,5 +114,22 @@ class IngestionServiceTest {
                 new IngestionProperties.Chunk(maxWords, overlapWords, minExtractedCharacters),
                 new IngestionProperties.Github(false, "pavankumar793/slack-rag-assistant", "main", "docs", "ingestion", "", "https://api.github.com")
         );
+    }
+
+    private static class StubUrlContentService extends UrlContentService {
+
+        @Override
+        public UrlDocument fetch(String url) {
+            return new UrlDocument(
+                    url,
+                    "support-wiki",
+                    """
+                            Support Wiki
+
+                            Support page content for ingestion.
+                            """,
+                    Hashing.sha256Hex("Support page content for ingestion.".getBytes())
+            );
+        }
     }
 }

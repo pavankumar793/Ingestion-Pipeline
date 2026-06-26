@@ -50,8 +50,9 @@ class IngestionServiceTest {
         Path batchDirectory = outputRoot.resolve(result.batchId());
         assertThat(batchDirectory.resolve("manifest.json")).exists();
         assertThat(batchDirectory.resolve("manifest.md")).exists();
-        String chunk = Files.readString(batchDirectory.resolve("employee-handbook").resolve("chunk-001.md"));
+        String chunk = Files.readString(batchDirectory.resolve("employee-handbook").resolve("authentication.md"));
         assertThat(chunk).contains("source_file: \"Employee Handbook.txt\"");
+        assertThat(chunk).contains("chunk_title: \"AUTHENTICATION\"");
         assertThat(chunk).contains("# AUTHENTICATION");
     }
 
@@ -81,7 +82,7 @@ class IngestionServiceTest {
             assertThat(fileResult.sourceName()).isEqualTo("support-wiki");
             assertThat(fileResult.status()).isEqualTo("created");
         });
-        Path chunkPath = outputRoot.resolve(result.batchId()).resolve("support-wiki").resolve("chunk-001.md");
+        Path chunkPath = outputRoot.resolve(result.batchId()).resolve("support-wiki").resolve("support-wiki.md");
         assertThat(Files.readString(chunkPath)).contains("# Support Wiki");
         assertThat(Files.readString(chunkPath)).contains("Support page content for ingestion.");
     }

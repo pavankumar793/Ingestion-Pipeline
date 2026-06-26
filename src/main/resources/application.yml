@@ -6,6 +6,9 @@ spring:
       max-file-size: 25MB
       max-request-size: 250MB
 
+server:
+  port: 8082
+
 ingestion:
   output-root: docs-unstaged
   max-files-per-request: 10
@@ -15,7 +18,7 @@ ingestion:
     overlap-words: 120
     min-extracted-characters: 80
   github:
-    enabled: false
+    enabled: true
     repository: pavankumar793/slack-rag-assistant
     base-branch: main
     target-folder: docs

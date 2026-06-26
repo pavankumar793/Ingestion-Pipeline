@@ -9,7 +9,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -26,8 +28,9 @@ public class OutputWriter {
         recreateDirectory(sourceDirectory);
 
         List<String> chunkFiles = new ArrayList<>();
+        Map<String, Integer> fileNameCounts = new HashMap<>();
         for (DocumentChunk chunk : chunks) {
-            String chunkFileName = "chunk-" + String.format("%03d", chunk.index()) + ".md";
+            String chunkFileName = chunkFileName(chunk, fileNameCounts);
             Files.writeString(sourceDirectory.resolve(chunkFileName), chunkMarkdown(fileName, sourceName, sourceHash, chunk), StandardCharsets.UTF_8);
             chunkFiles.add(sourceName + "/" + chunkFileName);
         }
@@ -43,11 +46,32 @@ public class OutputWriter {
                 source_hash: "%s"
                 chunk_id: "%s"
                 chunk_index: %d
+                chunk_title: "%s"
                 status: "unstaged"
                 ---
 
                 %s
-                """.formatted(escapeYaml(fileName), sourceName, sourceHash, chunk.id(), chunk.index(), chunk.content()).stripTrailing() + "\n";
+                """.formatted(escapeYaml(fileName), sourceName, sourceHash, chunk.id(), chunk.index(), escapeYaml(chunkTitle(chunk)), chunk.content()).stripTrailing() + "\n";
+    }
+
+    private static String chunkFileName(DocumentChunk chunk, Map<String, Integer> fileNameCounts) {
+        String base = Slugifier.slugify(chunkTitle(chunk));
+        if ("source".equals(base)) {
+            base = "chunk-" + String.format("%03d", chunk.index());
+        }
+
+        int count = fileNameCounts.merge(base, 1, Integer::sum);
+        if (count == 1) {
+            return base + ".md";
+        }
+        return base + "-" + String.format("%03d", chunk.index()) + ".md";
+    }
+
+    private static String chunkTitle(DocumentChunk chunk) {
+        if (chunk.heading() != null && !chunk.heading().isBlank()) {
+            return chunk.heading();
+        }
+        return "chunk-" + String.format("%03d", chunk.index());
     }
 
     private static String escapeYaml(String value) {

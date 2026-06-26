@@ -8,6 +8,7 @@ import com.rag.ingestion.service.model.FileResult;
 import com.rag.ingestion.service.model.GitHubPublishResult;
 import com.rag.ingestion.service.model.StoredSource;
 import com.rag.ingestion.service.model.UrlDocument;
+import com.rag.ingestion.service.model.UrlFetchOptions;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -71,13 +72,18 @@ public class IngestionService {
     }
 
     public BatchResult ingestUrls(List<String> urls) throws IOException {
+        return ingestUrls(urls, null);
+    }
+
+    public BatchResult ingestUrls(List<String> urls, String bearerToken) throws IOException {
         validateUrls(urls);
 
         String batchId = "batch-" + LocalDateTime.now(clock).format(BATCH_FORMAT);
         List<FileResult> results = new ArrayList<>();
+        UrlFetchOptions options = new UrlFetchOptions(bearerToken);
 
         for (String url : urls) {
-            results.add(processUrl(batchId, url));
+            results.add(processUrl(batchId, url, options));
         }
 
         BatchResult result = new BatchResult(batchId, batchStatus(results), properties.outputRoot().resolve(batchId).toString(), results, GitHubPublishResult.disabled());
@@ -119,9 +125,9 @@ public class IngestionService {
         }
     }
 
-    private FileResult processUrl(String batchId, String url) {
+    private FileResult processUrl(String batchId, String url, UrlFetchOptions options) {
         try {
-            UrlDocument document = urlContentService.fetch(url);
+            UrlDocument document = urlContentService.fetch(url, options);
             if (sourceStateRepository.hasSameHash(document.sourceName(), document.contentHash())) {
                 return new FileResult(url, document.sourceName(), "skipped", "Content hash unchanged.", document.contentHash(), 0, List.of());
             }

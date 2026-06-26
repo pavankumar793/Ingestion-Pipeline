@@ -24,18 +24,26 @@ mvn spring-boot:run
 ## Upload Example
 
 ```bash
-curl -F "files=@handbook.pdf" -F "files=@policy.docx" http://localhost:8080/api/ingestions
+curl -F "files=@handbook.pdf" -F "files=@policy.docx" http://localhost:8082/api/ingestions
 ```
 
 ## URL Ingestion Example
 
 ```bash
-curl -X POST http://localhost:8080/api/ingestions/urls \
+curl -X POST http://localhost:8082/api/ingestions/urls \
   -H "Content-Type: application/json" \
   -d "{\"urls\":[\"https://example.com/wiki/support\"]}"
 ```
 
 URL ingestion fetches text-based pages, removes common page chrome such as scripts, nav, headers, footers, forms, and sidebars, then extracts readable text from headings, paragraphs, list items, and tables. The same chunking, manifest, local output, and optional GitHub publishing flow is used for URL inputs.
+
+For pages protected by a bearer token, include `bearerToken`. The token is used only as an HTTP `Authorization: Bearer ...` header during fetch and is not written to chunks or manifests.
+
+```bash
+curl -X POST http://localhost:8082/api/ingestions/urls \
+  -H "Content-Type: application/json" \
+  -d "{\"urls\":[\"https://example.com/private/wiki\"],\"bearerToken\":\"your_token\"}"
+```
 
 ## Defaults
 

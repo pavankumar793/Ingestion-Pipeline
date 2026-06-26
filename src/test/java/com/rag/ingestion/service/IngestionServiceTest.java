@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rag.ingestion.config.IngestionProperties;
 import com.rag.ingestion.service.model.BatchResult;
 import com.rag.ingestion.service.model.UrlDocument;
+import com.rag.ingestion.service.model.UrlFetchOptions;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -74,17 +75,19 @@ class IngestionServiceTest {
     void writesChunksAndManifestsForUrlInput() throws Exception {
         IngestionService service = service(new StubUrlContentService());
 
-        BatchResult result = service.ingestUrls(List.of("https://example.com/wiki/support"));
+        BatchResult result = service.ingestUrls(List.of("https://example.com/wiki/support"), "secret-token");
 
         assertThat(result.status()).isEqualTo("success");
         assertThat(result.files()).singleElement().satisfies(fileResult -> {
             assertThat(fileResult.fileName()).isEqualTo("https://example.com/wiki/support");
             assertThat(fileResult.sourceName()).isEqualTo("support-wiki");
             assertThat(fileResult.status()).isEqualTo("created");
+            assertThat(fileResult.reason()).isNull();
         });
         Path chunkPath = outputRoot.resolve(result.batchId()).resolve("support-wiki").resolve("support-wiki.md");
         assertThat(Files.readString(chunkPath)).contains("# Support Wiki");
         assertThat(Files.readString(chunkPath)).contains("Support page content for ingestion.");
+        assertThat(Files.readString(chunkPath)).doesNotContain("secret-token");
     }
 
     private IngestionService service() {
@@ -120,7 +123,8 @@ class IngestionServiceTest {
     private static class StubUrlContentService extends UrlContentService {
 
         @Override
-        public UrlDocument fetch(String url) {
+        public UrlDocument fetch(String url, UrlFetchOptions options) {
+            assertThat(options.bearerToken()).isEqualTo("secret-token");
             return new UrlDocument(
                     url,
                     "support-wiki",

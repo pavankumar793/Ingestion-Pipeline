@@ -1,6 +1,7 @@
 package com.rag.ingestion.service;
 
 import com.rag.ingestion.service.model.UrlDocument;
+import com.rag.ingestion.service.model.UrlFetchOptions;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -25,12 +26,19 @@ public class UrlContentService {
             .build();
 
     public UrlDocument fetch(String url) throws IOException, InterruptedException {
+        return fetch(url, UrlFetchOptions.none());
+    }
+
+    public UrlDocument fetch(String url, UrlFetchOptions options) throws IOException, InterruptedException {
         URI uri = validHttpUri(url);
-        HttpRequest request = HttpRequest.newBuilder(uri)
+        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(uri)
                 .timeout(Duration.ofSeconds(20))
                 .header("User-Agent", "ingestion-pipeline/0.0.1")
-                .GET()
-                .build();
+                .GET();
+        if (options != null && options.bearerToken() != null && !options.bearerToken().isBlank()) {
+            requestBuilder.header("Authorization", "Bearer " + options.bearerToken().trim());
+        }
+        HttpRequest request = requestBuilder.build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new IngestionValidationException("URL returned HTTP " + response.statusCode() + ": " + url);

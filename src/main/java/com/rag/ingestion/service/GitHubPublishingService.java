@@ -41,7 +41,7 @@ public class GitHubPublishingService {
             return GitHubPublishResult.disabled();
         }
         if (github.token() == null || github.token().isBlank()) {
-            return failure(github, null, "GITHUB_TOKEN is required when GitHub publishing is enabled.");
+            return failure(github, null, "GITHUB_PERSONAL_ACCESS_TOKEN is required when GitHub publishing is enabled.");
         }
 
         String branch = github.branchPrefix() + "/" + result.batchId();

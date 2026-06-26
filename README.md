@@ -60,7 +60,7 @@ folder: docs
 Run with GitHub publishing:
 
 ```bash
-GITHUB_TOKEN=your_token mvn spring-boot:run -Dspring-boot.run.arguments="--ingestion.github.enabled=true"
+GITHUB_PERSONAL_ACCESS_TOKEN=your_token mvn spring-boot:run -Dspring-boot.run.arguments="--ingestion.github.enabled=true"
 ```
 
 Or create a local `.env` file from `.env.example` and load it before running the app. Keep `.env` private; it is ignored by Git.

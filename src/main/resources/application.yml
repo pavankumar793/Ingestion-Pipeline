@@ -23,5 +23,5 @@ ingestion:
     base-branch: main
     target-folder: docs
     branch-prefix: ingestion
-    token: ${GITHUB_TOKEN:}
+    token: ${GITHUB_PERSONAL_ACCESS_TOKEN:}
     api-url: https://api.github.com

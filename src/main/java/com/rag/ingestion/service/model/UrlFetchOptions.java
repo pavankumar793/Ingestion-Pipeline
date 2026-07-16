@@ -1,10 +1,11 @@
 package com.rag.ingestion.service.model;
 
 public record UrlFetchOptions(
-        String bearerToken
+        String bearerToken,
+        String cookieHeader
 ) {
 
     public static UrlFetchOptions none() {
-        return new UrlFetchOptions(null);
+        return new UrlFetchOptions(null, null);
     }
 }

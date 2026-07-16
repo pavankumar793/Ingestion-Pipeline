@@ -38,6 +38,9 @@ public class UrlContentService {
         if (options != null && options.bearerToken() != null && !options.bearerToken().isBlank()) {
             requestBuilder.header("Authorization", "Bearer " + options.bearerToken().trim());
         }
+        if (options != null && options.cookieHeader() != null && !options.cookieHeader().isBlank()) {
+            requestBuilder.header("Cookie", normalizeCookieHeader(options.cookieHeader()));
+        }
         HttpRequest request = requestBuilder.build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
@@ -163,6 +166,14 @@ public class UrlContentService {
                 .replace("â€�", "\"")
                 .replace("Â", "")
                 .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private static String normalizeCookieHeader(String cookieHeader) {
+        return cookieHeader
+                .replaceAll("[\\r\\n]+", " ")
+                .replaceAll("\\s*;\\s*", "; ")
+                .replaceAll("\\s{2,}", " ")
                 .trim();
     }
 

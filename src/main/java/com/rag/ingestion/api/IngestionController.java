@@ -30,6 +30,6 @@ public class IngestionController {
 
     @PostMapping(path = "/urls", consumes = MediaType.APPLICATION_JSON_VALUE)
     public BatchResult createFromUrls(@RequestBody UrlIngestionRequest request) throws IOException {
-        return ingestionService.ingestUrls(request.urls(), request.bearerToken());
+        return ingestionService.ingestUrls(request.urls(), request.bearerToken(), request.cookieHeader());
     }
 }

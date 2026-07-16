@@ -72,15 +72,19 @@ public class IngestionService {
     }
 
     public BatchResult ingestUrls(List<String> urls) throws IOException {
-        return ingestUrls(urls, null);
+        return ingestUrls(urls, null, null);
     }
 
     public BatchResult ingestUrls(List<String> urls, String bearerToken) throws IOException {
+        return ingestUrls(urls, bearerToken, null);
+    }
+
+    public BatchResult ingestUrls(List<String> urls, String bearerToken, String cookieHeader) throws IOException {
         validateUrls(urls);
 
         String batchId = "batch-" + LocalDateTime.now(clock).format(BATCH_FORMAT);
         List<FileResult> results = new ArrayList<>();
-        UrlFetchOptions options = new UrlFetchOptions(bearerToken);
+        UrlFetchOptions options = new UrlFetchOptions(bearerToken, cookieHeader);
 
         for (String url : urls) {
             results.add(processUrl(batchId, url, options));

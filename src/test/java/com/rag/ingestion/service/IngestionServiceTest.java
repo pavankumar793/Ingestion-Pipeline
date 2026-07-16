@@ -75,7 +75,11 @@ class IngestionServiceTest {
     void writesChunksAndManifestsForUrlInput() throws Exception {
         IngestionService service = service(new StubUrlContentService());
 
-        BatchResult result = service.ingestUrls(List.of("https://example.com/wiki/support"), "secret-token");
+        BatchResult result = service.ingestUrls(
+                List.of("https://example.com/wiki/support"),
+                "secret-token",
+                "JSESSIONID=abc; PF=xyz"
+        );
 
         assertThat(result.status()).isEqualTo("success");
         assertThat(result.files()).singleElement().satisfies(fileResult -> {
@@ -88,6 +92,8 @@ class IngestionServiceTest {
         assertThat(Files.readString(chunkPath)).contains("# Support Wiki");
         assertThat(Files.readString(chunkPath)).contains("Support page content for ingestion.");
         assertThat(Files.readString(chunkPath)).doesNotContain("secret-token");
+        assertThat(Files.readString(chunkPath)).doesNotContain("JSESSIONID=abc");
+        assertThat(Files.readString(chunkPath)).doesNotContain("PF=xyz");
     }
 
     private IngestionService service() {
@@ -125,6 +131,7 @@ class IngestionServiceTest {
         @Override
         public UrlDocument fetch(String url, UrlFetchOptions options) {
             assertThat(options.bearerToken()).isEqualTo("secret-token");
+            assertThat(options.cookieHeader()).isEqualTo("JSESSIONID=abc; PF=xyz");
             return new UrlDocument(
                     url,
                     "support-wiki",

@@ -45,6 +45,14 @@ curl -X POST http://localhost:8082/api/ingestions/urls \
   -d "{\"urls\":[\"https://example.com/private/wiki\"],\"bearerToken\":\"your_token\"}"
 ```
 
+For browser-authenticated pages, copy the request `Cookie` header from DevTools and pass it as `cookieHeader`. The cookie is used only as the HTTP `Cookie` header during fetch and is not written to chunks or manifests. Usually use either `bearerToken` or `cookieHeader`, depending on how the page is authenticated.
+
+```bash
+curl -X POST http://localhost:8082/api/ingestions/urls \
+  -H "Content-Type: application/json" \
+  -d "{\"urls\":[\"https://wiki.company.com/page\"],\"cookieHeader\":\"JSESSIONID=...; PF=...; other=...\"}"
+```
+
 ## Defaults
 
 - Max files per request: 10

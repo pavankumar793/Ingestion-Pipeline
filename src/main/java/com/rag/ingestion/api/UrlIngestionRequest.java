@@ -5,6 +5,7 @@ import java.util.List;
 
 public record UrlIngestionRequest(
         @NotEmpty List<String> urls,
-        String bearerToken
+        String bearerToken,
+        String cookieHeader
 ) {
 }

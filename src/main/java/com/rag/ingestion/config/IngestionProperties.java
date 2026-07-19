@@ -9,6 +9,7 @@ public record IngestionProperties(
         int maxFilesPerRequest,
         long maxFileSizeBytes,
         Chunk chunk,
+        Browser browser,
         Github github
 ) {
     public record Chunk(
@@ -26,6 +27,17 @@ public record IngestionProperties(
             String branchPrefix,
             String token,
             String apiUrl
+    ) {
+    }
+
+    public record Browser(
+            boolean enabled,
+            String provider,
+            String executablePath,
+            Path profilePath,
+            boolean headless,
+            int navigationTimeoutSeconds,
+            int interactiveTimeoutSeconds
     ) {
     }
 }

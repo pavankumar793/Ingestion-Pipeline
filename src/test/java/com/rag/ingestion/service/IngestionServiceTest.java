@@ -96,17 +96,40 @@ class IngestionServiceTest {
         assertThat(Files.readString(chunkPath)).doesNotContain("PF=xyz");
     }
 
+    @Test
+    void writesChunksAndManifestsForBrowserUrlInput() throws Exception {
+        IngestionService service = service(new UrlContentService(), new StubBrowserContentService(properties(1000, 120, 20)));
+
+        BatchResult result = service.ingestBrowserUrls(List.of("https://example.com/wiki/browser-support"), "firefox");
+
+        assertThat(result.status()).isEqualTo("success");
+        assertThat(result.files()).singleElement().satisfies(fileResult -> {
+            assertThat(fileResult.fileName()).isEqualTo("https://example.com/wiki/browser-support");
+            assertThat(fileResult.sourceName()).isEqualTo("browser-support-wiki");
+            assertThat(fileResult.status()).isEqualTo("created");
+            assertThat(fileResult.reason()).isNull();
+        });
+        Path chunkPath = outputRoot.resolve(result.batchId()).resolve("browser-support-wiki").resolve("browser-support-wiki.md");
+        assertThat(Files.readString(chunkPath)).contains("# Browser Support Wiki");
+        assertThat(Files.readString(chunkPath)).contains("Rendered page content for ingestion.");
+    }
+
     private IngestionService service() {
         return service(new UrlContentService());
     }
 
     private IngestionService service(UrlContentService urlContentService) {
+        return service(urlContentService, new BrowserContentService(properties(1000, 120, 20), urlContentService));
+    }
+
+    private IngestionService service(UrlContentService urlContentService, BrowserContentService browserContentService) {
         ObjectMapper objectMapper = new ObjectMapper();
         IngestionProperties properties = properties(1000, 120, 20);
         return new IngestionService(
                 properties,
                 new TextExtractionService(),
                 urlContentService,
+                browserContentService,
                 new ChunkingService(properties),
                 new OutputWriter(properties),
                 new ManifestWriter(properties, objectMapper),
@@ -122,6 +145,7 @@ class IngestionServiceTest {
                 10,
                 26214400,
                 new IngestionProperties.Chunk(maxWords, overlapWords, minExtractedCharacters),
+                new IngestionProperties.Browser(true, "default", null, outputRoot.resolve("browser-profile"), false, 60, 300),
                 new IngestionProperties.Github(false, "pavankumar793/slack-rag-assistant", "main", "docs", "ingestion", "", "https://api.github.com")
         );
     }
@@ -141,6 +165,28 @@ class IngestionServiceTest {
                             Support page content for ingestion.
                             """,
                     Hashing.sha256Hex("Support page content for ingestion.".getBytes())
+            );
+        }
+    }
+
+    private static class StubBrowserContentService extends BrowserContentService {
+
+        StubBrowserContentService(IngestionProperties properties) {
+            super(properties, new UrlContentService());
+        }
+
+        @Override
+        public UrlDocument fetch(String url, String browserOverride) {
+            assertThat(browserOverride).isEqualTo("firefox");
+            return new UrlDocument(
+                    url,
+                    "browser-support-wiki",
+                    """
+                            Browser Support Wiki
+
+                            Rendered page content for ingestion.
+                            """,
+                    Hashing.sha256Hex("Rendered page content for ingestion.".getBytes())
             );
         }
     }

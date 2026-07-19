@@ -41,6 +41,7 @@ class OutputWriterTest {
                 10,
                 26214400,
                 new IngestionProperties.Chunk(1000, 120, 80),
+                new IngestionProperties.Browser(true, "default", null, outputRoot.resolve("browser-profile"), false, 60, 300),
                 new IngestionProperties.Github(false, "pavankumar793/slack-rag-assistant", "main", "docs", "ingestion", "", "https://api.github.com")
         );
     }

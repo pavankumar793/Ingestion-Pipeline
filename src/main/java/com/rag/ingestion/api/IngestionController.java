@@ -32,4 +32,9 @@ public class IngestionController {
     public BatchResult createFromUrls(@RequestBody UrlIngestionRequest request) throws IOException {
         return ingestionService.ingestUrls(request.urls(), request.bearerToken(), request.cookieHeader());
     }
+
+    @PostMapping(path = "/browser-urls", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public BatchResult createFromBrowserUrls(@RequestBody BrowserUrlIngestionRequest request) throws IOException {
+        return ingestionService.ingestBrowserUrls(request.urls(), request.browser());
+    }
 }

@@ -53,6 +53,47 @@ curl -X POST http://localhost:8082/api/ingestions/urls \
   -d "{\"urls\":[\"https://wiki.company.com/page\"],\"cookieHeader\":\"JSESSIONID=...; PF=...; other=...\"}"
 ```
 
+## Browser-Assisted URL Ingestion
+
+For SSO-protected or old wiki pages that do not work with plain HTTP fetch, use browser-assisted ingestion. The app opens a real browser session, waits while you complete login if needed, reads the rendered page, then writes the same Markdown chunks and manifests.
+
+```bash
+curl -X POST http://localhost:8082/api/ingestions/browser-urls \
+  -H "Content-Type: application/json" \
+  -d "{\"urls\":[\"https://wiki.company.com/page\"],\"browser\":\"default\"}"
+```
+
+Supported browser values:
+
+- `default`: Playwright Chromium
+- `chrome`: installed Google Chrome
+- `edge`: installed Microsoft Edge
+- `firefox`: Playwright Firefox
+- `webkit`: Playwright WebKit, closest to Safari behavior
+- `custom`: configured executable path, useful for Chromium-based enterprise browsers such as Island when automation is allowed
+
+Browser settings are configurable:
+
+```yaml
+ingestion:
+  browser:
+    enabled: true
+    provider: default
+    executable-path:
+    profile-path: browser-profile
+    headless: false
+    navigation-timeout-seconds: 60
+    interactive-timeout-seconds: 300
+```
+
+For the first local run, install Playwright browser binaries if `default`, `firefox`, or `webkit` is used:
+
+```bash
+mvn exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install"
+```
+
+If you use `chrome`, `edge`, or `custom`, install that browser normally on the machine and set `ingestion.browser.executable-path` only for `custom`. For cloud deployment, use a persistent volume for `browser-profile`; otherwise login sessions disappear after restart.
+
 ## Defaults
 
 - Max files per request: 10

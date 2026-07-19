@@ -28,6 +28,7 @@ public class IngestionService {
     private final IngestionProperties properties;
     private final TextExtractionService extractionService;
     private final UrlContentService urlContentService;
+    private final BrowserContentService browserContentService;
     private final ChunkingService chunkingService;
     private final OutputWriter outputWriter;
     private final ManifestWriter manifestWriter;
@@ -39,6 +40,7 @@ public class IngestionService {
             IngestionProperties properties,
             TextExtractionService extractionService,
             UrlContentService urlContentService,
+            BrowserContentService browserContentService,
             ChunkingService chunkingService,
             OutputWriter outputWriter,
             ManifestWriter manifestWriter,
@@ -49,6 +51,7 @@ public class IngestionService {
         this.properties = properties;
         this.extractionService = extractionService;
         this.urlContentService = urlContentService;
+        this.browserContentService = browserContentService;
         this.chunkingService = chunkingService;
         this.outputWriter = outputWriter;
         this.manifestWriter = manifestWriter;
@@ -88,6 +91,20 @@ public class IngestionService {
 
         for (String url : urls) {
             results.add(processUrl(batchId, url, options));
+        }
+
+        BatchResult result = new BatchResult(batchId, batchStatus(results), properties.outputRoot().resolve(batchId).toString(), results, GitHubPublishResult.disabled());
+        return finishBatch(result);
+    }
+
+    public BatchResult ingestBrowserUrls(List<String> urls, String browser) throws IOException {
+        validateUrls(urls);
+
+        String batchId = "batch-" + LocalDateTime.now(clock).format(BATCH_FORMAT);
+        List<FileResult> results = new ArrayList<>();
+
+        for (String url : urls) {
+            results.add(processBrowserUrl(batchId, url, browser));
         }
 
         BatchResult result = new BatchResult(batchId, batchStatus(results), properties.outputRoot().resolve(batchId).toString(), results, GitHubPublishResult.disabled());
@@ -148,6 +165,29 @@ public class IngestionService {
             return new FileResult(url, document.sourceName(), status, null, document.contentHash(), chunks.size(), stored.chunkFiles());
         } catch (Exception exception) {
             String sourceName = Slugifier.slugify(url == null || url.isBlank() ? "web-page" : url);
+            return new FileResult(url, sourceName, "failed", exception.getMessage(), null, 0, List.of());
+        }
+    }
+
+    private FileResult processBrowserUrl(String batchId, String url, String browser) {
+        try {
+            UrlDocument document = browserContentService.fetch(url, browser);
+            if (sourceStateRepository.hasSameHash(document.sourceName(), document.contentHash())) {
+                return new FileResult(url, document.sourceName(), "skipped", "Content hash unchanged.", document.contentHash(), 0, List.of());
+            }
+            boolean existingSource = sourceStateRepository.exists(document.sourceName());
+
+            if (document.text().length() < properties.chunk().minExtractedCharacters()) {
+                return new FileResult(url, document.sourceName(), "failed", "No reliable readable text extracted from browser URL.", document.contentHash(), 0, List.of());
+            }
+
+            List<DocumentChunk> chunks = chunkingService.chunk(document.sourceName(), document.text());
+            StoredSource stored = outputWriter.write(batchId, document.sourceName(), url, document.contentHash(), chunks);
+            sourceStateRepository.save(document.sourceName(), document.contentHash());
+            String status = existingSource ? "updated" : "created";
+            return new FileResult(url, document.sourceName(), status, null, document.contentHash(), chunks.size(), stored.chunkFiles());
+        } catch (Exception exception) {
+            String sourceName = Slugifier.slugify(url == null || url.isBlank() ? "browser-page" : url);
             return new FileResult(url, sourceName, "failed", exception.getMessage(), null, 0, List.of());
         }
     }

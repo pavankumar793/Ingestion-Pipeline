@@ -17,6 +17,14 @@ ingestion:
     max-words: 1000
     overlap-words: 120
     min-extracted-characters: 80
+  browser:
+    enabled: true
+    provider: default
+    executable-path:
+    profile-path: browser-profile
+    headless: false
+    navigation-timeout-seconds: 60
+    interactive-timeout-seconds: 300
   github:
     enabled: true
     repository: pavankumar793/slack-rag-assistant

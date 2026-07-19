@@ -157,6 +157,7 @@ class ChunkingServiceTest {
                 10,
                 26214400,
                 new IngestionProperties.Chunk(maxWords, overlapWords, 80),
+                new IngestionProperties.Browser(true, "default", null, Path.of("browser-profile"), false, 60, 300),
                 new IngestionProperties.Github(false, "pavankumar793/slack-rag-assistant", "main", "docs", "ingestion", "", "https://api.github.com")
         );
     }
